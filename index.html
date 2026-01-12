@@ -4,45 +4,42 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Universal Local AI (2026)</title>
-    <!-- Document Parsers -->
-    
+    <!-- Non-module libraries for Word and Excel -->
+    <script src="cdn.jsdelivr.net"></script>
+    <script src="cdn.jsdelivr.net"></script>
     <style>
-        body { font-family: system-ui, sans-serif; background: #f0f2f5; padding: 20px; max-width: 800px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
-        #status { padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #fff3cd; color: #856404; margin-bottom: 10px; display: inline-block; }
-        #chat { height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff; margin-top: 10px; }
+        body { font-family: system-ui, sans-serif; background: #f1f5f9; padding: 20px; max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        #status { padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #cbd5e1; color: #1e293b; margin-bottom: 15px; display: inline-block; }
+        #chat { height: 350px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 15px; background: #fff; }
         .input-area { display: flex; gap: 10px; margin-top: 15px; }
-        input[type="text"] { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
-        button { padding: 12px 24px; background: #007bff; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
-        button:disabled { background: #ccc; cursor: not-allowed; }
-        .msg { margin-bottom: 12px; line-height: 1.5; }
+        input[type="text"] { flex-grow: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; }
+        button { padding: 12px 24px; background: #2563eb; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #94a3b8; cursor: not-allowed; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h3>Private Document Search</h3>
-    <div id="status">Connecting to Hardware...</div>
-    <p style="font-size: 13px; color: #666;">All processing happens locally. Your files never leave this device.</p>
-    <input type="file" id="files" multiple accept=".pdf,.docx,.xlsx,.txt" style="width: 100%;">
+    <h3>Local AI Document Search</h3>
+    <div id="status">Starting Hardware Detection...</div>
+    <input type="file" id="files" multiple accept=".pdf,.docx,.xlsx,.txt" style="width: 100%; margin-top: 10px;">
 </div>
 
 <div class="card">
-    <div id="chat">
-        <div class="msg"><i>Upload your documents to begin searching.</i></div>
-    </div>
+    <div id="chat"><i>Status: Connect your device to a secure context (HTTPS/Localhost) for GPU acceleration.</i></div>
     <div class="input-area">
-        <input type="text" id="query" placeholder="Ask a question about your files...">
-        <button id="sendBtn" disabled>Ask AI</button>
+        <input type="text" id="query" placeholder="Ask about your documents...">
+        <button id="sendBtn" disabled>Ask</button>
     </div>
 </div>
 
 <script type="module">
-    // Option A: jsDelivr CDN (2026 standard)
+    // FIX: All module imports MUST start with https://
     import { pipeline, env } from 'cdn.jsdelivr.net';
-    import * as pdfjsLib from 'cdnjs.cloudflare.com';
+    import * as pdfjsLib from 'cdn.jsdelivr.net';
     
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'cdnjs.cloudflare.com';
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'cdn.jsdelivr.net';
 
     let generator, embedder, documentStore = [];
     const statusEl = document.getElementById('status');
@@ -51,23 +48,20 @@
 
     async function init() {
         try {
-            // Hardware Check for Laptop (WebGPU) vs Mobile Fallback (WASM)
+            // Check for WebGPU (Secure Context Required)
             const device = navigator.gpu ? 'webgpu' : 'wasm';
-            statusEl.innerText = `Connecting to ${device.toUpperCase()} engine...`;
+            statusEl.innerText = `Initializing ${device.toUpperCase()} AI Engine...`;
 
             // Load optimized 2026 models
             embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device });
             generator = await pipeline('text-generation', 'Qwen/Qwen2.5-0.5B-Instruct', { device });
 
-            statusEl.style.background = "#d4edda";
-            statusEl.style.color = "#155724";
+            statusEl.style.background = "#dcfce7";
             statusEl.innerText = `✓ AI Ready (${device.toUpperCase()})`;
             sendBtn.disabled = false;
         } catch (e) {
-            console.error(e);
-            statusEl.style.background = "#f8d7da";
-            statusEl.style.color = "#721c24";
-            statusEl.innerText = "Init Failed. Ensure you use HTTPS or Localhost.";
+            statusEl.style.background = "#fee2e2";
+            statusEl.innerText = "Error: " + e.message;
         }
     }
 
@@ -84,13 +78,13 @@
             }
             return text;
         } else if (ext === 'docx') {
-            const res = await mammoth.extractRawText({ arrayBuffer: buffer });
+            const res = await window.mammoth.extractRawText({ arrayBuffer: buffer });
             return res.value;
         } else if (ext === 'xlsx') {
-            const wb = XLSX.read(buffer, { type: 'array' });
-            return wb.SheetNames.map(n => XLSX.utils.sheet_to_txt(wb.Sheets[n])).join("\n");
+            const wb = window.XLSX.read(buffer, { type: 'array' });
+            return wb.SheetNames.map(n => window.XLSX.utils.sheet_to_txt(wb.Sheets[n])).join("\n");
         }
-        return await file.text();
+        return new TextDecoder().decode(buffer);
     }
 
     document.getElementById('files').onchange = async (e) => {
@@ -98,31 +92,33 @@
         for (const file of e.target.files) {
             const text = await parseFile(file);
             const output = await embedder(text, { pooling: 'mean', normalize: true });
-            documentStore.push({ name: file.name, text, vector: output.data });
+            documentStore.push({ name: file.name, text, vector: Array.from(output.data) });
         }
         statusEl.innerText = `✓ ${documentStore.length} Documents Indexed`;
     };
 
     sendBtn.onclick = async () => {
-        const query = document.getElementById('query').value;
-        if (!query || documentStore.length === 0) return;
+        const queryText = document.getElementById('query').value;
+        if (!queryText || documentStore.length === 0) return;
 
         sendBtn.disabled = true;
-        chat.innerHTML += `<div class="msg"><b>You:</b> ${query}</div>`;
+        chat.innerHTML += `<div><b>You:</b> ${queryText}</div>`;
 
-        // Semantic Search
-        const qVec = await embedder(query, { pooling: 'mean', normalize: true });
+        // Semantic Match
+        const qVec = await embedder(queryText, { pooling: 'mean', normalize: true });
+        const queryData = Array.from(qVec.data);
+        
         const best = documentStore.sort((a, b) => 
-            cosineSimilarity(qVec.data, b.vector) - cosineSimilarity(qVec.data, a.vector)
+            cosineSimilarity(queryData, b.vector) - cosineSimilarity(queryData, a.vector)
         )[0];
 
-        // Prompting
-        const prompt = `Context: ${best.text.substring(0, 1000)}\nQuestion: ${query}\nAnswer:`;
-        const result = await generator(prompt, { max_new_tokens: 120 });
+        // Prompt
+        const prompt = `Context: ${best.text.substring(0, 1000)}\nQuestion: ${queryText}\nAnswer:`;
+        const result = await generator(prompt, { max_new_tokens: 150 });
         
-        chat.innerHTML += `<div class="msg"><b>AI:</b> ${result[0].generated_text.split("Answer:")[1] || "Unable to find answer."}</div>`;
+        const aiResponse = result[0].generated_text.split("Answer:").pop();
+        chat.innerHTML += `<div><b style="color:blue">AI:</b> ${aiResponse}</div><hr>`;
         chat.scrollTop = chat.scrollHeight;
-        document.getElementById('query').value = "";
         sendBtn.disabled = false;
     };
 
