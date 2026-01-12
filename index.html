@@ -55,23 +55,34 @@
     const chat = document.getElementById('chat');
 
     async function init() {
-        try {
-            // Hardware Detection 2026: Prioritize WebGPU (Laptops/High-end phones) then WASM (Budget phones)
-            const device = navigator.gpu ? 'webgpu' : 'wasm';
-            status.innerText = `Connecting to ${device.toUpperCase()}...`;
-
-            // Qwen2.5-0.5B: Specifically chosen for 2026 compatibility across Laptop and Mobile
-            embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device });
-            generator = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', { device });
-
-            status.innerText = `✓ Hardware: ${device.toUpperCase()} | AI Ready`;
-            sendBtn.disabled = false;
-        } catch (e) {
+    try {
+        const status = document.getElementById('status');
+        if (!navigator.gpu) {
             status.style.background = "#fee2e2";
-            status.innerText = "Error: Use a modern browser like Chrome/Safari (2026 updated)";
+            status.innerText = "Error: WebGPU not found. Ensure you are on HTTPS and using a 2026-capable browser.";
+            return;
         }
-    }
+        
+        const adapter = await navigator.gpu.requestAdapter();
+        if (!adapter) {
+            status.innerText = "Error: GPU Adapter unavailable. Check browser flags.";
+            return;
+        }
 
+        const device = await adapter.requestDevice();
+        status.innerText = "Connecting to AI Engine...";
+
+        // Loading smaller model for guaranteed mobile success
+        embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device: 'webgpu' });
+        generator = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', { device: 'webgpu' });
+
+        status.innerText = "✓ AI Ready (WebGPU)";
+        document.getElementById('sendBtn').disabled = false;
+    } catch (e) {
+        document.getElementById('status').innerText = "Init Failed: " + e.message;
+    }
+}
+    
     async function extractText(file) {
         const ext = file.name.split('.').pop().toLowerCase();
         const arrayBuffer = await file.arrayBuffer();
