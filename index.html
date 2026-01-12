@@ -3,89 +3,133 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Universal AI Doc Search (2026)</title>
-    <!-- Cross-platform file parsers -->
+    <title>Universal Local AI (2026)</title>
+    <!-- Document Parsers -->
     <script src="cdnjs.cloudflare.com" type="module"></script>
     <script src="cdnjs.cloudflare.com"></script>
     <script src="cdnjs.cloudflare.com"></script>
     <style>
-        :root { --primary: #2563eb; --bg: #f8fafc; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 15px; max-width: 800px; margin: auto; }
-        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
-        #chat { height: 40vh; overflow-y: auto; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; }
-        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #dcfce7; color: #166534; }
-        .input-group { display: flex; gap: 8px; margin-top: 15px; }
-        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; } /* 16px prevents mobile zoom */
-        button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
-        button:disabled { opacity: 0.5; }
-        .msg { margin-bottom: 15px; line-height: 1.6; }
-        .ai-label { color: var(--primary); font-weight: bold; }
+        body { font-family: system-ui, sans-serif; background: #f0f2f5; padding: 20px; max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); margin-bottom: 20px; }
+        #status { padding: 8px 12px; border-radius: 6px; font-size: 13px; font-weight: bold; background: #fff3cd; color: #856404; margin-bottom: 10px; display: inline-block; }
+        #chat { height: 300px; overflow-y: auto; border: 1px solid #ddd; border-radius: 8px; padding: 15px; background: #fff; margin-top: 10px; }
+        .input-area { display: flex; gap: 10px; margin-top: 15px; }
+        input[type="text"] { flex-grow: 1; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 16px; }
+        button { padding: 12px 24px; background: #007bff; color: #fff; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+        .msg { margin-bottom: 12px; line-height: 1.5; }
     </style>
 </head>
 <body>
 
 <div class="card">
-    <h2>Universal Local AI</h2>
-    <div id="status" class="status-tag">Detecting Hardware...</div>
-    <p style="font-size: 13px; color: #64748b;">PDF, DOCX, XLSX, TXT supported. Everything stays on your device.</p>
-    
+    <h3>Private Document Search</h3>
+    <div id="status">Connecting to Hardware...</div>
+    <p style="font-size: 13px; color: #666;">All processing happens locally. Your files never leave this device.</p>
     <input type="file" id="files" multiple accept=".pdf,.docx,.xlsx,.txt" style="width: 100%;">
 </div>
 
 <div class="card">
     <div id="chat">
-        <div class="msg"><b>System:</b> Upload files to start. The AI will answer based on their content.</div>
+        <div class="msg"><i>Upload your documents to begin searching.</i></div>
     </div>
-    
-    <div class="input-group">
-        <input type="text" id="query" placeholder="Ask a question...">
+    <div class="input-area">
+        <input type="text" id="query" placeholder="Ask a question about your files...">
         <button id="sendBtn" disabled>Ask AI</button>
     </div>
 </div>
 
 <script type="module">
+    // Option A: jsDelivr CDN (2026 standard)
     import { pipeline, env } from 'cdn.jsdelivr.net';
+    import * as pdfjsLib from 'cdnjs.cloudflare.com';
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'cdnjs.cloudflare.com';
 
     let generator, embedder, documentStore = [];
-    const status = document.getElementById('status');
+    const statusEl = document.getElementById('status');
     const sendBtn = document.getElementById('sendBtn');
+    const chat = document.getElementById('chat');
 
     async function init() {
         try {
-            // 2026 Detection Logic: Check for GPU, then check Adapter
-            let device = 'wasm'; // Default fallback
-            
-            if (navigator.gpu) {
-                const adapter = await navigator.gpu.requestAdapter();
-                if (adapter) {
-                    device = 'webgpu';
-                    status.style.background = "#dcfce7";
-                    status.innerText = "✓ GPU Acceleration Active";
-                } else {
-                    status.innerText = "⚠ GPU Adapter blocked. Using CPU (WASM).";
-                }
-            } else {
-                status.innerText = "⚠ HTTPS Required for GPU. Using CPU (WASM).";
-            }
+            // Hardware Check for Laptop (WebGPU) vs Mobile Fallback (WASM)
+            const device = navigator.gpu ? 'webgpu' : 'wasm';
+            statusEl.innerText = `Connecting to ${device.toUpperCase()} engine...`;
 
-            // Load models using the detected device
-            // Using 0.5B model to prevent memory crashes on mobile
+            // Load optimized 2026 models
             embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device });
-            generator = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', { device });
+            generator = await pipeline('text-generation', 'Qwen/Qwen2.5-0.5B-Instruct', { device });
 
-            status.innerText += " | AI Loaded.";
+            statusEl.style.background = "#d4edda";
+            statusEl.style.color = "#155724";
+            statusEl.innerText = `✓ AI Ready (${device.toUpperCase()})`;
             sendBtn.disabled = false;
         } catch (e) {
-            status.style.background = "#fee2e2";
-            status.innerText = "Critical Error: " + e.message;
             console.error(e);
+            statusEl.style.background = "#f8d7da";
+            statusEl.style.color = "#721c24";
+            statusEl.innerText = "Init Failed. Ensure you use HTTPS or Localhost.";
         }
     }
-    
-    // ... include your extractText and sendBtn.onclick functions from the previous version ...
+
+    async function parseFile(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const buffer = await file.arrayBuffer();
+        if (ext === 'pdf') {
+            const pdf = await pdfjsLib.getDocument({ data: buffer }).promise;
+            let text = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(s => s.str).join(" ") + " ";
+            }
+            return text;
+        } else if (ext === 'docx') {
+            const res = await mammoth.extractRawText({ arrayBuffer: buffer });
+            return res.value;
+        } else if (ext === 'xlsx') {
+            const wb = XLSX.read(buffer, { type: 'array' });
+            return wb.SheetNames.map(n => XLSX.utils.sheet_to_txt(wb.Sheets[n])).join("\n");
+        }
+        return await file.text();
+    }
+
+    document.getElementById('files').onchange = async (e) => {
+        statusEl.innerText = "Indexing documents...";
+        for (const file of e.target.files) {
+            const text = await parseFile(file);
+            const output = await embedder(text, { pooling: 'mean', normalize: true });
+            documentStore.push({ name: file.name, text, vector: output.data });
+        }
+        statusEl.innerText = `✓ ${documentStore.length} Documents Indexed`;
+    };
+
+    sendBtn.onclick = async () => {
+        const query = document.getElementById('query').value;
+        if (!query || documentStore.length === 0) return;
+
+        sendBtn.disabled = true;
+        chat.innerHTML += `<div class="msg"><b>You:</b> ${query}</div>`;
+
+        // Semantic Search
+        const qVec = await embedder(query, { pooling: 'mean', normalize: true });
+        const best = documentStore.sort((a, b) => 
+            cosineSimilarity(qVec.data, b.vector) - cosineSimilarity(qVec.data, a.vector)
+        )[0];
+
+        // Prompting
+        const prompt = `Context: ${best.text.substring(0, 1000)}\nQuestion: ${query}\nAnswer:`;
+        const result = await generator(prompt, { max_new_tokens: 120 });
+        
+        chat.innerHTML += `<div class="msg"><b>AI:</b> ${result[0].generated_text.split("Answer:")[1] || "Unable to find answer."}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+        document.getElementById('query').value = "";
+        sendBtn.disabled = false;
+    };
+
+    function cosineSimilarity(a, b) { return a.reduce((sum, v, i) => sum + v * b[i], 0); }
     init();
 </script>
-
-
 </body>
 </html>
