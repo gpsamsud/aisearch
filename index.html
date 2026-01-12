@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Universal AI Doc Search (2026)</title>
+    <!-- Cross-platform file parsers -->
+    <script src="cdnjs.cloudflare.com" type="module"></script>
+    <script src="cdnjs.cloudflare.com"></script>
+    <script src="cdnjs.cloudflare.com"></script>
+    <style>
+        :root { --primary: #2563eb; --bg: #f8fafc; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); padding: 15px; max-width: 800px; margin: auto; }
+        .card { background: white; padding: 20px; border-radius: 12px; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); margin-bottom: 20px; }
+        #chat { height: 40vh; overflow-y: auto; border-top: 1px solid #eee; padding-top: 15px; margin-top: 15px; }
+        .status-tag { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 12px; font-weight: bold; background: #dcfce7; color: #166534; }
+        .input-group { display: flex; gap: 8px; margin-top: 15px; }
+        input[type="text"] { flex: 1; padding: 12px; border: 1px solid #cbd5e1; border-radius: 8px; font-size: 16px; } /* 16px prevents mobile zoom */
+        button { background: var(--primary); color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+        button:disabled { opacity: 0.5; }
+        .msg { margin-bottom: 15px; line-height: 1.6; }
+        .ai-label { color: var(--primary); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h2>Universal Local AI</h2>
+    <div id="status" class="status-tag">Detecting Hardware...</div>
+    <p style="font-size: 13px; color: #64748b;">PDF, DOCX, XLSX, TXT supported. Everything stays on your device.</p>
+    
+    <input type="file" id="files" multiple accept=".pdf,.docx,.xlsx,.txt" style="width: 100%;">
+</div>
+
+<div class="card">
+    <div id="chat">
+        <div class="msg"><b>System:</b> Upload files to start. The AI will answer based on their content.</div>
+    </div>
+    
+    <div class="input-group">
+        <input type="text" id="query" placeholder="Ask a question...">
+        <button id="sendBtn" disabled>Ask AI</button>
+    </div>
+</div>
+
+<script type="module">
+    import { pipeline, env } from 'cdn.jsdelivr.net';
+    import * as pdfjsLib from 'cdnjs.cloudflare.com';
+    
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'cdnjs.cloudflare.com';
+
+    let generator, embedder, documentStore = [];
+    const status = document.getElementById('status');
+    const sendBtn = document.getElementById('sendBtn');
+    const chat = document.getElementById('chat');
+
+    async function init() {
+        try {
+            // Hardware Detection 2026: Prioritize WebGPU (Laptops/High-end phones) then WASM (Budget phones)
+            const device = navigator.gpu ? 'webgpu' : 'wasm';
+            status.innerText = `Connecting to ${device.toUpperCase()}...`;
+
+            // Qwen2.5-0.5B: Specifically chosen for 2026 compatibility across Laptop and Mobile
+            embedder = await pipeline('feature-extraction', 'Xenova/all-MiniLM-L6-v2', { device });
+            generator = await pipeline('text-generation', 'Xenova/Qwen2.5-0.5B-Instruct', { device });
+
+            status.innerText = `✓ Hardware: ${device.toUpperCase()} | AI Ready`;
+            sendBtn.disabled = false;
+        } catch (e) {
+            status.style.background = "#fee2e2";
+            status.innerText = "Error: Use a modern browser like Chrome/Safari (2026 updated)";
+        }
+    }
+
+    async function extractText(file) {
+        const ext = file.name.split('.').pop().toLowerCase();
+        const arrayBuffer = await file.arrayBuffer();
+
+        if (ext === 'pdf') {
+            const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+            let text = "";
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const content = await page.getTextContent();
+                text += content.items.map(s => s.str).join(" ") + " ";
+            }
+            return text;
+        } else if (ext === 'docx') {
+            const result = await mammoth.extractRawText({ arrayBuffer });
+            return result.value;
+        } else if (ext === 'xlsx') {
+            const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+            return workbook.SheetNames.map(n => XLSX.utils.sheet_to_txt(workbook.Sheets[n])).join("\n");
+        } else {
+            return await file.text();
+        }
+    }
+
+    document.getElementById('files').onchange = async (e) => {
+        status.innerText = "Indexing documents...";
+        for (const file of e.target.files) {
+            const text = await extractText(file);
+            const output = await embedder(text, { pooling: 'mean', normalize: true });
+            documentStore.push({ name: file.name, text, vector: output.data });
+        }
+        status.innerText = `✓ ${documentStore.length} Files Indexed`;
+    };
+
+    sendBtn.onclick = async () => {
+        const queryText = document.getElementById('query').value;
+        if (!queryText || documentStore.length === 0) return;
+
+        sendBtn.disabled = true;
+        chat.innerHTML += `<div class="msg"><b>You:</b> ${queryText}</div>`;
+
+        // Semantic Retrieval
+        const queryVec = await embedder(queryText, { pooling: 'mean', normalize: true });
+        const bestMatch = documentStore.sort((a, b) => 
+            cosineSimilarity(queryVec.data, b.vector) - cosineSimilarity(queryVec.data, a.vector)
+        )[0];
+
+        // Generation with context window safety for mobile
+        const contextSnippet = bestMatch.text.substring(0, 1500); 
+        const prompt = `<|im_start|>system\nUse the context to answer.\nContext: ${contextSnippet}<|im_end|>\n<|im_start|>user\n${queryText}<|im_end|>\n<|im_start|>assistant\n`;
+        
+        const result = await generator(prompt, { max_new_tokens: 150, temperature: 0.2 });
+        
+        const response = result[0].generated_text.split("assistant\n")[1] || "No answer found.";
+        chat.innerHTML += `<div class="msg"><span class="ai-label">AI:</span> ${response}</div>`;
+        chat.scrollTop = chat.scrollHeight;
+        
+        document.getElementById('query').value = "";
+        sendBtn.disabled = false;
+    };
+
+    function cosineSimilarity(a, b) { return a.reduce((sum, val, i) => sum + val * b[i], 0); }
+    
+    init();
+</script>
+
+</body>
+</html>
